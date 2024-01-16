@@ -2,6 +2,10 @@ class Global extends Node:
 	static var instance : Global
 	var menu_manager : MenuManager
 
+	var last_button:ButtonClass
+	var f_mod_button:ButtonClass
+	var return_button:ButtonClass
+
 	var fake_receipt:Font = preload("res://fonts/fake receipt.otf")
 
 	class ModNode extends Node:
@@ -12,7 +16,7 @@ class Global extends Node:
 			return tied_mod if id == "" else Global.instance.loaded_mods[id]
 		func get_mod_node(id:String = "") -> ModNode:
 			return self if id == "" else get_mod(id).tied_node
-		
+
 		func _process(delta):
 			pass
 		func _physics_process(delta):
@@ -40,13 +44,13 @@ class Global extends Node:
 			Global.instance.add_child(node)
 			node.name = self.name
 			node.set_script(ResourceLoader.load(path + "/main.gd"))
-			
+
 			self.tied_node = node
 			node.set_mod(self)
-			
+
 			#TO PLAY IT SAFE.
 			await Global.instance.get_tree().process_frame
-			
+
 			if node.has_method("_enter_tree"):
 				node._enter_tree()
 			if node.has_method("_ready"):
@@ -66,47 +70,50 @@ class Global extends Node:
 	func CreateModUI():
 		var buttons_offset:int = 26
 		menu_ui = menu_manager.buttons[0].ui.get_parent() as Control
-		
+		last_button = menu_manager.buttons[2]
+		return_button = menu_manager.buttons[3]
+
 		#MOVE EXIT BUTTON DOWN
-		var exit_button:Label = menu_manager.buttons[2].ui
-		var true_exit_button:Button = menu_manager.buttons[2].get_parent()
+		var exit_button:Label = last_button.ui
+		var true_exit_button:Button = last_button.get_parent()
 		exit_button.position.y += buttons_offset
 		true_exit_button.position.y += buttons_offset
-		
+
 		#CREATE MODS BUTTON
 		var mods_button:Label = exit_button.duplicate()
 		var true_mods_button:Button = true_exit_button.duplicate()
 		var mods_buttonclass:ButtonClass = true_mods_button.get_child(0) as ButtonClass
-		
+
 		mods_button.name = "button_mods"
 		true_mods_button.name = "true button_mods"
 		mods_buttonclass.name = "button class_mods"
-		
+
 		mods_button.text = "MODS"
 		ActivateModButton(mods_buttonclass)
+		f_mod_button = mods_buttonclass
 		mods_buttonclass.alias = "mods"
 		mods_buttonclass.ui = mods_button
-		
+
 		menu_ui.add_child(mods_button)
 		menu_ui.add_child(true_mods_button)
-		
+
 		menu_manager.buttons.append(mods_buttonclass)
 		menu_manager.screen_main.append_array([mods_button, true_mods_button])
-		
+
 		mods_button.position.y -= buttons_offset
 		true_mods_button.position.y -= buttons_offset
-		
+
 		#CREATE MODS SCREEN
 		var temp_ui:Control = Control.new()
 		temp_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		temp_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 		get_tree().root.add_child(temp_ui)
-		
+
 		menu_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 		menu_ui.size = temp_ui.size
-		screen_mods.append_array([menu_manager.buttons[3].ui, menu_manager.buttons[3].get_parent()])
+		screen_mods.append_array([menu_manager.buttons[3].ui])
 		mods_buttonclass.connect("is_pressed", OpenMods)
-		
+
 		var mod_ui:Control = Control.new()
 		mod_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mod_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -115,28 +122,33 @@ class Global extends Node:
 		mod_center.set_anchors_preset(Control.PRESET_FULL_RECT)
 		var panel_container:PanelContainer = PanelContainer.new()
 		panel_container.custom_minimum_size = Vector2(724, 423)
-		
+
 		var scroll:ScrollContainer = ScrollContainer.new()
 		scroll.custom_minimum_size = Vector2(724, 423)
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED 
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		var vbox:VBoxContainer = VBoxContainer.new()
 		vbox.custom_minimum_size = Vector2(724, 423)
-		
+
 		menu_ui.add_child(mod_ui)
 		mod_ui.add_child(mod_center)
 		mod_center.add_child(panel_container)
 		panel_container.add_child(scroll)
 		scroll.add_child(vbox)
-		
+
 		screen_mods.append(mod_ui)
-		
+
 		mods_vbox = vbox
 		UpdateModList()
-		
+
 		for mod in loaded_mods:
 			loaded_mods[mod].init_mod()
-		
+
 		mod_ui.visible = false
+
+		return_button.connect("is_pressed", ReturnMod)
+		menu_manager.buttons[5].connect("is_pressed", ReturnMod) #OPTIONS RETURN BUTTON
+		menu_manager.buttons[1].connect("is_pressed", CreditsFix) #CREDITS BUTTON
+
 
 	func HasModByID(id:String) -> bool:
 		var dir = DirAccess.open("user://mods/")
@@ -210,32 +222,50 @@ class Global extends Node:
 			lab1.text = "\"{name}\" by {author} - {version}".format({"name": mod.name, "author": mod.author, "version": mod.version})
 			lab1.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			mod_holder.add_child(lab1)
-			
+
 			var lab2:Label = Label.new()
 			lab2.name = "DescriptionLabel"
 			lab2.text = mod.description
 			lab2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			mod_holder.add_child(lab2)
-			
+
 			lab1.add_theme_font_override("font", preload("res://fonts/fake receipt.otf"))
 			lab2.add_theme_font_override("font", preload("res://fonts/fake receipt.otf"))
 			lab1.add_theme_font_size_override("font_size", 24)
 			lab2.add_theme_font_size_override("font_size", 24)
-			
+
 			loaded_mods[mod.id] = mod
-			
+
 			var separator:HSeparator = HSeparator.new()
 			separator.name = "Separator"
 			mod_holder.add_child(separator)
-			
+
 			mod_holder.name = mod.name
 			mods_vbox.add_child(mod_holder)
 
+	func CreditsFix():
+		return_button.isActive = true
+		return_button.SetFilter("stop")
+
+	func ShowMods():
+		menu_manager.title.visible = false
+		for i in menu_manager.screen_main: i.visible = false
+		for i in menu_manager.screen_creds: i.visible = false
+		for i in menu_manager.screen_options: i.visible = false
+		for i in screen_mods: i.visible = false
+		for i in screen_mods: i.visible = true
+
+	func ReturnMod():
+		for i in screen_mods: i.visible = false
+		f_mod_button.isActive = true
+		f_mod_button.SetFilter("stop")
+
 	func OpenMods():
 		menu_manager.ResetButtons()
-		menu_manager.Show("mods")
+		ShowMods()
 		menu_manager.Buttons(false)
-		menu_manager.buttons[3].isActive = true
+		return_button.isActive = true
+		return_button.SetFilter("stop")
 		menu_manager.ResetButtons()
 
 func CreateModAutoload():
@@ -249,5 +279,5 @@ func CreateModAutoload():
 	else:
 		Global.instance.CreateModUI()
 
-func _ready(): 
+func _ready():
 	CreateModAutoload()
