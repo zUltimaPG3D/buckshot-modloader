@@ -1,6 +1,9 @@
 # buckshot-modloader
 Very basic modloader for Buckshot Roulette, not finished and will probably break if the game updates.
 
+# Prefer godot-mod-loader over this!
+If you just want the UI (which is bad too), you can still use this project, but the [Godot Modloader](https://github.com/GodotModding/godot-mod-loader) is a more generalized project and it **works with Godot 4.x**, if you're on the right branch. Since this was a completely solo project and it was put together in just a few minutes, godot-mod-loader is something you should prefer over this if you want a good modloader for the game.
+
 # Requirements
 
 [Buckshot Roulette](https://mikeklubnika.itch.io/buckshot-roulette) by Mike Klubnika
